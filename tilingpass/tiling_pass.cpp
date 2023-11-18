@@ -42,7 +42,6 @@ using namespace llvm;
 namespace {
     struct TilingPass : public PassInfoMixin<TilingPass> {
         PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
-            std::cout << "Hello function: " << F.getName().str() << std::endl;
             return PreservedAnalyses::all();
         }
     };
