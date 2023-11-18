@@ -31,6 +31,8 @@
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
 
+#include<iostream>
+
 /* *******Implementation Starts Here******* */
 // You can include more Header files here
 /* *******Implementation Ends Here******* */
@@ -38,16 +40,9 @@
 using namespace llvm;
 
 namespace {
-    struct HW2CorrectnessPass : public PassInfoMixin<HW2CorrectnessPass> {
+    struct TilingPass : public PassInfoMixin<TilingPass> {
         PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
-            llvm::BlockFrequencyAnalysis::Result &bfi = FAM.getResult<BlockFrequencyAnalysis>(F);
-            llvm::BranchProbabilityAnalysis::Result &bpi = FAM.getResult<BranchProbabilityAnalysis>(F);
-            llvm::LoopAnalysis::Result &li = FAM.getResult<LoopAnalysis>(F);
-            /* *******Implementation Starts Here******* */
-            // Your core logic should reside here.
-            /* *******Implementation Ends Here******* */
-            // Your pass is modifying the source code. Figure out which analyses
-            // are preserved and only return those, not all.
+            std::cout << "Hello function: " << F.getName().str() << std::endl;
             return PreservedAnalyses::all();
         }
     };
@@ -55,15 +50,15 @@ namespace {
 
 extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK llvmGetPassPluginInfo() {
     return {
-        LLVM_PLUGIN_API_VERSION, "HW2Pass", "v0.1",
+        LLVM_PLUGIN_API_VERSION, "tilingpass", "v0.1",
         [](PassBuilder &PB) {
             PB.registerPipelineParsingCallback(
                 [](StringRef Name, FunctionPassManager &FPM,
                    ArrayRef<PassBuilder::PipelineElement>)
                 {
-                    if (Name == "fplicm-correctness")
+                    if (Name == "tilingpass")
                     {
-                        FPM.addPass(HW2CorrectnessPass());
+                        FPM.addPass(TilingPass());
                         return true;
                     }
                     return false;
