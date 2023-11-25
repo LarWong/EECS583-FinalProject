@@ -42,7 +42,38 @@ using namespace llvm;
 namespace {
     struct TilingPass : public PassInfoMixin<TilingPass> {
         PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
-            return PreservedAnalyses::all();
+            // don't run of not in main()
+            if (F.getName() != "main") {
+                return PreservedAnalyses::all();
+            }
+
+            /* DEFAULT ANALYSIS */
+            LoopAnalysis::Result &li = FAM.getResult<LoopAnalysis>(F);
+
+            /* USEFUL IR INSERTION POINTS */
+
+            // 1. MAIN() ENTRY POINT: use mainEntryBuilder
+            BasicBlock* mainEntryBB = &F.getEntryBlock();
+            IRBuilder<> mainEntryBuilder(mainEntryBB->getContext());
+            auto mainTerminator = mainEntryBB->getTerminator();
+            if (mainTerminator) {
+                // Set the insertion point before the terminator instruction
+                mainEntryBuilder.SetInsertPoint(mainEntryBB, mainTerminator->getIterator());
+            } else {
+                // No terminator, so set the insert point to the end of the block
+                mainEntryBuilder.SetInsertPoint(mainEntryBB);
+            }
+
+            /* BLOCKING FACTOR B1 (height), B2 (width) */
+            // TODO: some algo to find values
+            int B1 = 2;
+            int B2 = 2;
+
+            /* NEW LOOP VARIABLES: jj, kk */
+            AllocaInst* jjReg = mainEntryBuilder.CreateAlloca(Type::getInt32Ty(F.getContext()), 0, "jj");
+            AllocaInst* kkReg = mainEntryBuilder.CreateAlloca(Type::getInt32Ty(F.getContext()), 0, "kk");
+
+            return PreservedAnalyses::none();
         }
     };
 }
