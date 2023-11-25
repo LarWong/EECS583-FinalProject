@@ -11,7 +11,7 @@ int validate_matrix(double mat[SIZE][SIZE]) {
   double ans[SIZE][SIZE] = MAT3;
   for (int i = 0; i < SIZE; ++i) {
     for (int j = 0; j < SIZE; ++j) {
-      if (fabs(ans[i][j] - mat[i][j]) > 1e3) {
+      if (fabs(ans[i][j] - mat[i][j]) > 1e-3) {
         return 0;
       }
     }
@@ -29,11 +29,11 @@ int main() {
   for (int kk = 0; kk < SIZE; kk += B) {
     for (int jj = 0; jj < SIZE; jj += B) {
       for (int i = 0; i < SIZE; i += 1) {
-        int k_block = kk+B-1;
+        int k_block = kk+B;
         int k_bounds = k_block > SIZE ? SIZE : k_block;
         for (int k = kk; k < k_bounds; k += 1) {
-          int r = mat1[i][k];
-          int j_block = jj+B-1;
+          double r = mat1[i][k];
+          int j_block = jj+B;
           int j_bounds = j_block > SIZE ? SIZE : j_block;
           for (int j = jj; j < j_bounds; j += 1) {
             product[i][j] += r*mat2[k][j];
