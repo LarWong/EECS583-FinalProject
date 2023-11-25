@@ -25,13 +25,17 @@ int main() {
   double mat1[SIZE][SIZE] = MAT1;
   double mat2[SIZE][SIZE] = MAT2;
   double product[SIZE][SIZE] = {{0.0}};
+  int k_block = 0;
+  int k_bounds = 0;
+  int j_block = 0;
+  int j_bounds = 0;
 
   for (int kk = 0; kk < SIZE; kk += B) {
-    int k_block = kk+B;
-    int k_bounds = k_block > SIZE ? SIZE : k_block;
+    k_block = kk+B;
+    k_bounds = k_block > SIZE ? SIZE : k_block;
     for (int jj = 0; jj < SIZE; jj += B) {
-      int j_block = jj+B;
-      int j_bounds = j_block > SIZE ? SIZE : j_block;
+      j_block = jj+B;
+      j_bounds = j_block > SIZE ? SIZE : j_block;
       for (int i = 0; i < SIZE; i += 1) {
         for (int k = kk; k < k_bounds; k += 1) {
           double r = mat1[i][k];

@@ -47,12 +47,12 @@ namespace {
                 return PreservedAnalyses::all();
             }
 
-            /* DEFAULT ANALYSIS */
+            /* USEFUL ANALYSES */
             LoopAnalysis::Result &li = FAM.getResult<LoopAnalysis>(F);
 
-            /* USEFUL IR INSERTION POINTS */
-
-            // 1. MAIN() ENTRY POINT: use mainEntryBuilder
+            /* USEFUL IR INSERTION POINTS 
+             *  - MAIN() ENTRY POINT: use mainEntryBuilder
+             */
             BasicBlock* mainEntryBB = &F.getEntryBlock();
             IRBuilder<> mainEntryBuilder(mainEntryBB->getContext());
             auto mainTerminator = mainEntryBB->getTerminator();
@@ -64,14 +64,40 @@ namespace {
                 mainEntryBuilder.SetInsertPoint(mainEntryBB);
             }
 
-            /* BLOCKING FACTOR B1 (height), B2 (width) */
+            /* BLOCKING FACTORS:
+             *  - B1 (height), B2 (width) 
+             */
             // TODO: some algo to find values
             int B1 = 2;
             int B2 = 2;
 
-            /* NEW LOOP VARIABLES: jj, kk */
+            /* LLVM CONSTANT VALUES */
+            auto zeroVal = mainEntryBuilder.getInt32(0);
+            auto B1Val = mainEntryBuilder.getInt32(B1);
+            auto B2Val = mainEntryBuilder.getInt32(B2);
+
+            /* NEW LOOP VARIABLES: 
+             *  - jj, kk 
+             */
             AllocaInst* jjReg = mainEntryBuilder.CreateAlloca(Type::getInt32Ty(F.getContext()), 0, "jj");
             AllocaInst* kkReg = mainEntryBuilder.CreateAlloca(Type::getInt32Ty(F.getContext()), 0, "kk");
+
+            /* 
+             * BLOCK BOUNDS VARIABLES: 
+             *  - k_block, k_bounds, j_block, j_bounds 
+             */
+            AllocaInst* kBlockReg = mainEntryBuilder.CreateAlloca(Type::getInt32Ty(F.getContext()), 0, "k_block");
+            AllocaInst* kBoundsReg = mainEntryBuilder.CreateAlloca(Type::getInt32Ty(F.getContext()), 0, "k_bounds");
+            AllocaInst* jBlockReg = mainEntryBuilder.CreateAlloca(Type::getInt32Ty(F.getContext()), 0, "j_block");
+            AllocaInst* jBoundsReg = mainEntryBuilder.CreateAlloca(Type::getInt32Ty(F.getContext()), 0, "j_bounds");
+
+            // Inititalize new variables 
+            mainEntryBuilder.CreateStore(zeroVal, jjReg);
+            mainEntryBuilder.CreateStore(zeroVal, kkReg);
+            mainEntryBuilder.CreateStore(zeroVal, kBlockReg);
+            mainEntryBuilder.CreateStore(zeroVal, kBoundsReg);
+            mainEntryBuilder.CreateStore(zeroVal, jBlockReg);
+            mainEntryBuilder.CreateStore(zeroVal, jBoundsReg);
 
             return PreservedAnalyses::none();
         }
