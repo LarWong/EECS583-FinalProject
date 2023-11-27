@@ -11,7 +11,7 @@ int validate_matrix(double **mat, double **correct)
     {
         for (int j = 0; j < SIZE; ++j)
         {
-            if (fabs(correct[i][j] - mat[i][j]) > 1e-3)
+            if (fabs(correct[i][j] - mat[i][j]) > 1e-5)
             {
                 printf("Incorrect multiplication\n");
                 return 0;
