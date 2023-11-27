@@ -3,5 +3,6 @@
 cd build && cmake .. && make
 cd ../tests
 clang -emit-llvm -S test-0.c -Xclang -disable-O0-optnone -o test-blocked.ll
+opt -disable-output -load-pass-plugin=../build/tilingpass/tilingpass.so -passes="tilingpass" test-blocked.ll
 opt -disable-output -load-pass-plugin=../build/tilingpass/tilingpass.so -passes="tilingpass,dot-cfg" test-blocked.ll
 cat .main.dot | dot -Tpdf > test-blocked.pdf
