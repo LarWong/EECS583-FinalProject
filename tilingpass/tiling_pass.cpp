@@ -84,8 +84,8 @@ namespace {
             /* NEW LOOP VARIABLES: 
              *  - jj, kk 
              */
-            AllocaInst* jjReg = mainEntryBuilder.CreateAlloca(Type::getInt32Ty(F.getContext()), 0, "jj");
-            AllocaInst* kkReg = mainEntryBuilder.CreateAlloca(Type::getInt32Ty(F.getContext()), 0, "kk");
+            // AllocaInst* jjReg = mainEntryBuilder.CreateAlloca(Type::getInt32Ty(F.getContext()), 0, "jj");
+            // AllocaInst* kkReg = mainEntryBuilder.CreateAlloca(Type::getInt32Ty(F.getContext()), 0, "kk");
 
             // Inititalize new variables 
             // mainEntryBuilder.CreateStore(zeroVal, jjReg);
@@ -219,7 +219,7 @@ namespace {
             auto newKBound = kkLoopBB2Builder.CreatePHI(Type::getInt32Ty(F.getContext()), 2, "k_bound_phi");
             newKBound->addIncoming(newKKBB1, kkLoopFBB);
             newKBound->addIncoming(matrixSize, kkLoopTBB);
-            kkLoopBB2Builder.CreateStore(zeroVal, jjReg);
+            // kkLoopBB2Builder.CreateStore(zeroVal, jjReg);
             kkLoopBB2Builder.CreateBr(jjLoopHeader);
 
             /* ======= kk LOOP END ======= */
