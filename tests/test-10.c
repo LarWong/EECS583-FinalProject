@@ -1,4 +1,4 @@
-#define SIZE <SIZE>
+#define SIZE 10
 
 #include <math.h>
 #include <stdio.h>
@@ -24,7 +24,7 @@ int validate_matrix(double **mat, double **correct)
 
 double ***read_matrices()
 {
-    FILE *file = fopen("test-<SIZE>.txt", "r");
+    FILE *file = fopen("test-10.txt", "r");
     if (file == NULL)
     {
         printf("Could not open file\n");
