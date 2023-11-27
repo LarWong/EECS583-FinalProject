@@ -11,7 +11,7 @@ int validate_matrix(double mat[SIZE][SIZE]) {
   double ans[SIZE][SIZE] = MAT3;
   for (int i = 0; i < SIZE; ++i) {
     for (int j = 0; j < SIZE; ++j) {
-      if (fabs(ans[i][j] - mat[i][j]) > 1e3) {
+      if (fabs(ans[i][j] - mat[i][j]) > 1e-3) {
         return 0;
       }
     }
