@@ -91,21 +91,18 @@ namespace {
              * BLOCK BOUNDS VARIABLES: 
              *  - k_block, k_bounds, j_block, j_bounds 
              */
-            AllocaInst* kBoundsReg = mainEntryBuilder.CreateAlloca(Type::getInt32Ty(F.getContext()), 0, "k_bounds");
-            AllocaInst* jBoundsReg = mainEntryBuilder.CreateAlloca(Type::getInt32Ty(F.getContext()), 0, "j_bounds");
 
             // Inititalize new variables 
             mainEntryBuilder.CreateStore(zeroVal, jjReg);
             mainEntryBuilder.CreateStore(zeroVal, kkReg);
-            mainEntryBuilder.CreateStore(zeroVal, kBoundsReg);
-            mainEntryBuilder.CreateStore(zeroVal, jBoundsReg);
 
             // Loop header of original outer loop
-            auto originalOuter = (*LI.begin())->getHeader();
+            auto iLoop = LI.begin();
+            auto iLoopHeader = (*iLoop)->getHeader();
             // assume never nullptr
-            auto originalOuterReg = cast<LoadInst>(*(originalOuter->begin())).getPointerOperand();
+            auto iReg = cast<LoadInst>(*(iLoopHeader->begin())).getPointerOperand();
             // Delete first store
-            for (User *U : originalOuterReg->users()) {
+            for (User *U : iReg->users()) {
                 if (StoreInst *I = dyn_cast<StoreInst>(U)) {
                     if (I->getParent() == mainEntryBB) {
                         I->eraseFromParent();
@@ -114,12 +111,24 @@ namespace {
                 }
             }
 
+            // Get info for k loop
+            auto kLoop = (*iLoop)->getSubLoops().begin();
+            auto kLoopHeader = (*kLoop)->getHeader();
+            auto& kLoopInit = cast<StoreInst>(*(iLoopHeader->getTerminator()->getSuccessor(0)->begin()));
+            auto& kLoopCmp = cast<ICmpInst>(*(++kLoopHeader->begin()));
+
+            // Get info for j loop
+            auto jLoop = (*kLoop)->getSubLoops().begin();
+            auto jLoopHeader = (*jLoop)->getHeader();
+            auto& jLoopInit = cast<StoreInst>(*(++(kLoopHeader->getTerminator()->getSuccessor(0)->rbegin())));
+            auto& jLoopCmp = cast<llvm::ICmpInst>(*(++jLoopHeader->begin()));
+
             // After matrix mult, loops exit here
-            auto outerLoopExit = dyn_cast<BranchInst>(originalOuter->getTerminator())->getSuccessor(1);
+            auto outerLoopExit = dyn_cast<BranchInst>(iLoopHeader->getTerminator())->getSuccessor(1);
 
             /* ALL NEW BBs TO ADD*/
-            auto kkLoopHeader = BasicBlock::Create(F.getContext(), "kk_loop_header", &F, originalOuter);
-            auto kkLoopLatch = BasicBlock::Create(F.getContext(), "kk_loop_hatch", &F);
+            auto kkLoopHeader = BasicBlock::Create(F.getContext(), "kk_loop_header", &F, iLoopHeader);
+            auto kkLoopLatch = BasicBlock::Create(F.getContext(), "kk_loop_latch", &F);
             auto kkLoopBB1 = BasicBlock::Create(F.getContext(), "kk_loop_bb_1", &F);
             auto kkLoopTBB = BasicBlock::Create(F.getContext(), "kk_loop_t", &F);
             auto kkLoopFBB = BasicBlock::Create(F.getContext(), "kk_loop_f", &F);
@@ -135,22 +144,22 @@ namespace {
             /* ======= jj LOOP START =======*/
             // Fill jjLoopHeader
             IRBuilder<> jjLoopHeaderBuilder(jjLoopHeader);
-            auto currJJHeader = jjLoopHeaderBuilder.CreateLoad(Type::getInt32Ty(F.getContext()), jjReg, "curr_jj_header");
-            auto jjCmp = jjLoopHeaderBuilder.CreateICmpSLT(currJJHeader, matrixSize, "jj_cmp");
+            auto currJJ = jjLoopHeaderBuilder.CreateLoad(Type::getInt32Ty(F.getContext()), jjReg, "curr_jj");
+            auto jjCmp = jjLoopHeaderBuilder.CreateICmpSLT(currJJ, matrixSize, "jj_cmp");
             jjLoopHeaderBuilder.CreateCondBr(jjCmp, jjLoopBB1, kkLoopLatch);
 
             // Fill jjLoopLatch
             IRBuilder<> jjLoopLatchBuilder(jjLoopLatch);
-            auto currJJToInc = jjLoopLatchBuilder.CreateLoad(Type::getInt32Ty(F.getContext()), jjReg, "curr_jj_to_inc");
-            auto newJJLatch = jjLoopLatchBuilder.CreateNSWAdd(currJJToInc, B2Val, "inc_jj_latch");
+            // auto currJJToInc = jjLoopLatchBuilder.CreateLoad(Type::getInt32Ty(F.getContext()), jjReg, "curr_jj_to_inc");
+            auto newJJLatch = jjLoopLatchBuilder.CreateNSWAdd(currJJ, B2Val, "inc_jj_latch");
             jjLoopLatchBuilder.CreateStore(newJJLatch, jjReg);
             jjLoopLatchBuilder.CreateBr(jjLoopHeader);
-            originalOuter->getTerminator()->setSuccessor(1, jjLoopLatch);
+            iLoopHeader->getTerminator()->setSuccessor(1, jjLoopLatch);
 
             // Fill jjLoopBB1
             IRBuilder<> jjLoopBB1Builder(jjLoopBB1);
-            auto currJJBB1 = jjLoopBB1Builder.CreateLoad(Type::getInt32Ty(F.getContext()), jjReg, "curr_jj_BB1");
-            auto newJJBB1 = jjLoopBB1Builder.CreateNSWAdd(currJJBB1, B2Val, "new_jj_BB1");
+            // auto currJJBB1 = jjLoopBB1Builder.CreateLoad(Type::getInt32Ty(F.getContext()), jjReg, "curr_jj_BB1");
+            auto newJJBB1 = jjLoopBB1Builder.CreateNSWAdd(currJJ, B2Val, "new_jj_BB1");
             auto jjTest = jjLoopBB1Builder.CreateICmpSGT(newJJBB1, matrixSize, "test_new_jj");
             jjLoopBB1Builder.CreateCondBr(jjTest, jjLoopTBB, jjLoopFBB);
 
@@ -164,11 +173,10 @@ namespace {
             // Fill jjLoopBB2
             IRBuilder<> jjLoopBB2Builder(jjLoopBB2);
             auto newJBound = jjLoopBB2Builder.CreatePHI(Type::getInt32Ty(F.getContext()), 2, "j_bound_phi");
-            newJBound->addIncoming(newJJBB1, jjLoopTBB);
-            newJBound->addIncoming(matrixSize, jjLoopFBB);
-            jjLoopBB2Builder.CreateStore(newJBound, jBoundsReg);
-            jjLoopBB2Builder.CreateStore(zeroVal, originalOuterReg);
-            jjLoopBB2Builder.CreateBr(originalOuter);
+            newJBound->addIncoming(newJJBB1, jjLoopFBB);
+            newJBound->addIncoming(matrixSize, jjLoopTBB);
+            jjLoopBB2Builder.CreateStore(zeroVal, iReg);
+            jjLoopBB2Builder.CreateBr(iLoopHeader);
 
             /* ======= jj LOOP END =======*/
 
@@ -181,21 +189,21 @@ namespace {
             }
 
             IRBuilder<> kkLoopHeaderBuilder(kkLoopHeader);
-            auto currKKHeader = kkLoopHeaderBuilder.CreateLoad(Type::getInt32Ty(F.getContext()), kkReg, "curr_kk_header");
-            auto kkCmp = kkLoopHeaderBuilder.CreateICmpSLT(currKKHeader, matrixSize, "kk_cmp");
+            auto currKK = kkLoopHeaderBuilder.CreateLoad(Type::getInt32Ty(F.getContext()), kkReg, "curr_kk");
+            auto kkCmp = kkLoopHeaderBuilder.CreateICmpSLT(currKK, matrixSize, "kk_cmp");
             kkLoopHeaderBuilder.CreateCondBr(kkCmp, kkLoopBB1, outerLoopExit);
 
             // Fill kkLoopLatch
             IRBuilder<> kkLoopLatchBuilder(kkLoopLatch);
-            auto currKKToInc = kkLoopLatchBuilder.CreateLoad(Type::getInt32Ty(F.getContext()), kkReg, "curr_kk_to_inc");
-            auto newKKLatch = kkLoopLatchBuilder.CreateNSWAdd(currKKToInc, B1Val, "inc_kk_latch");
+            // auto currKKToInc = kkLoopLatchBuilder.CreateLoad(Type::getInt32Ty(F.getContext()), kkReg, "curr_kk_to_inc");
+            auto newKKLatch = kkLoopLatchBuilder.CreateNSWAdd(currKK, B1Val, "inc_kk_latch");
             kkLoopLatchBuilder.CreateStore(newKKLatch, kkReg);
             kkLoopLatchBuilder.CreateBr(kkLoopHeader);
 
-            // Fill jjLoopBB1
+            // Fill kkLoopBB1
             IRBuilder<> kkLoopBB1Builder(kkLoopBB1);
-            auto currKKBB1 = kkLoopBB1Builder.CreateLoad(Type::getInt32Ty(F.getContext()), kkReg, "curr_kk_BB1");
-            auto newKKBB1 = kkLoopBB1Builder.CreateNSWAdd(currKKBB1, B1Val, "new_kk_BB1");
+            // auto currKKBB1 = kkLoopBB1Builder.CreateLoad(Type::getInt32Ty(F.getContext()), kkReg, "curr_kk_BB1");
+            auto newKKBB1 = kkLoopBB1Builder.CreateNSWAdd(currKK, B1Val, "new_kk_BB1");
             auto kkTest = kkLoopBB1Builder.CreateICmpSGT(newKKBB1, matrixSize, "test_new_kk");
             kkLoopBB1Builder.CreateCondBr(kkTest, kkLoopTBB, kkLoopFBB);
 
@@ -209,17 +217,20 @@ namespace {
             // Fill kkLoopBB2
             IRBuilder<> kkLoopBB2Builder(kkLoopBB2);
             auto newKBound = kkLoopBB2Builder.CreatePHI(Type::getInt32Ty(F.getContext()), 2, "k_bound_phi");
-            newKBound->addIncoming(newKKBB1, kkLoopTBB);
-            newKBound->addIncoming(matrixSize, kkLoopFBB);
-            kkLoopBB2Builder.CreateStore(newKBound, kBoundsReg);
+            newKBound->addIncoming(newKKBB1, kkLoopFBB);
+            newKBound->addIncoming(matrixSize, kkLoopTBB);
             kkLoopBB2Builder.CreateStore(zeroVal, jjReg);
             kkLoopBB2Builder.CreateBr(jjLoopHeader);
 
             /* ======= kk LOOP END ======= */
 
-            // TODO: Update icmps to use bounds
 
+            /* UPDATE BOUNDS FOR INNER LOOPS */
+            kLoopInit.setOperand(0, currKK);
+            kLoopCmp.setOperand(1, newKBound);
 
+            jLoopInit.setOperand(0, currJJ);
+            jLoopCmp.setOperand(1, newJBound);
 
             return PreservedAnalyses::none();
         }
