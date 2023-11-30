@@ -1,13 +1,13 @@
 #!/bin/bash
-
+mkdir build
 cd build && cmake .. && make
 cd ../tests
 rm *.ll test-blocked
 clang -emit-llvm -S test-${1}.c -Xclang -disable-O0-optnone -o test-blocked.ll
 opt -load-pass-plugin=../build/tilingpass/tilingpass.so -passes="tilingpass,dot-cfg" test-blocked.ll -o test-blocked-output.ll
 clang test-blocked-output.ll -Xclang -disable-O0-optnone -o test-blocked
-clang -O3 test-${1}.c -o test-unblocked
-cat .main.dot | dot -Tpdf > test-blocked.pdf
+clang -O0 test-${1}.c -o test-unblocked
+cat .main.dot | dot -Tpdf > test-blocked-${1}.pdf
 echo "== Running non-tiled test ..."
 ./test-unblocked
 echo "== Running tiled test ..."
