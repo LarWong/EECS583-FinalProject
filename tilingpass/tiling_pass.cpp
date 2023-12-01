@@ -75,7 +75,7 @@ namespace
 
             //tailor algo
             int B = 0;
-            int C = 32 * 1024 / sizeof(double);
+            int C = 32 * 1024 / sizeof(double) ;
             int maxWidth = std::min(matrixSizeInt->getSExtValue(),static_cast<int64_t>(C));
             int addr = matrixSizeInt->getSExtValue() / 2;
             int di = 0;

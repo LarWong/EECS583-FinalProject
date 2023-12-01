@@ -2,6 +2,7 @@
 mkdir build
 cd build && cmake .. && make
 cd ../tests
+python3 make_tests.py ${1}
 rm *.ll test-blocked
 clang -emit-llvm -S test-${1}.c -Xclang -disable-O0-optnone -o test-blocked.ll
 opt -load-pass-plugin=../build/tilingpass/tilingpass.so -passes="tilingpass,dot-cfg" test-blocked.ll -o test-blocked-output.ll

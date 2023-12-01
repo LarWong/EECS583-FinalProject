@@ -1,5 +1,5 @@
 #define SIZE <SIZE>
-
+#define B 10
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
