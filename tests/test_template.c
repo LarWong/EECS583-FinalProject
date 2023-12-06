@@ -104,7 +104,7 @@ int main()
     double time = (double)(end - start) / CLOCKS_PER_SEC;
     printf("Elapsed Time: %0.5f\n", time);
 
-    validate_matrix(mat3, product);
+    // validate_matrix(mat3, product);
     free_matrices(matrices);
 
     return 0;

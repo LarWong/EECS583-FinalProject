@@ -57,14 +57,9 @@ namespace
             /* BLOCKING FACTORS:
              *  - B1 (height), B2 (width)
              */
-            // TODO: some algo to find values
-            int B1 = 2;
-            int B2 = 2;
 
             /* LLVM CONSTANT VALUES */
             auto zeroVal = mainEntryBuilder.getInt32(0);
-            auto B1Val = mainEntryBuilder.getInt32(B1);
-            auto B2Val = mainEntryBuilder.getInt32(B2);
 
             // Loop header of original outer loop
             auto iLoop = LI.begin();
@@ -91,8 +86,8 @@ namespace
                 }
                 maxWidth = std::min(maxWidth,dj);
             }
-            B1Val = mainEntryBuilder.getInt32(B);
-            B2Val = mainEntryBuilder.getInt32(B);
+            auto B1Val = mainEntryBuilder.getInt32(B);
+            auto B2Val = mainEntryBuilder.getInt32(B);
             // Delete first store
             for (User *U : iReg->users())
             {

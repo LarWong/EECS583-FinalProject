@@ -1,0 +1,1 @@
+add_llvm_pass_plugin(tilingpass_branchless tiling_pass.cpp)
