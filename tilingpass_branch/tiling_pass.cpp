@@ -4,6 +4,7 @@
 #include "llvm/Analysis/LoopIterator.h"
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/IR/CFG.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/PassManager.h"
@@ -206,14 +207,14 @@ namespace
 extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK llvmGetPassPluginInfo()
 {
     return {
-        LLVM_PLUGIN_API_VERSION, "tilingpass_original", "v0.1",
+        LLVM_PLUGIN_API_VERSION, "tilingpass_branch", "v0.1",
         [](PassBuilder &PB)
         {
             PB.registerPipelineParsingCallback(
                 [](StringRef Name, FunctionPassManager &FPM,
                    ArrayRef<PassBuilder::PipelineElement>)
                 {
-                    if (Name == "tilingpass_original")
+                    if (Name == "tilingpass_branch")
                     {
                         FPM.addPass(TilingPass());
                         return true;
