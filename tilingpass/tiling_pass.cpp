@@ -16,7 +16,8 @@
 #include "llvm/Transforms/Utils/LoopUtils.h"
 
 #include <iostream>
-
+#include <algorithm>
+#include <cmath>
 using namespace llvm;
 
 namespace
@@ -70,6 +71,27 @@ namespace
             // assume never nullptr
             auto iReg = cast<LoadInst>(*(iLoopHeader->begin())).getPointerOperand();
             auto matrixSize = (++iLoopHeader->begin())->getOperand(1);
+            llvm::ConstantInt* matrixSizeInt = llvm::dyn_cast<llvm::ConstantInt>(matrixSize);
+
+            //tailor algo
+            int B = 0;
+            int C = 32 * 1024 / sizeof(double) ;
+            int maxWidth = std::min(matrixSizeInt->getSExtValue(),static_cast<int64_t>(C));
+            int addr = matrixSizeInt->getSExtValue() / 2;
+            int di = 0;
+            int dj = 0;
+            while(true){
+                addr = addr + C;
+                di = addr / matrixSizeInt->getSExtValue();
+                dj = std::abs(addr % matrixSizeInt->getSExtValue() - (matrixSizeInt->getSExtValue() / 2));
+                if(di >= std::min(maxWidth,dj)){
+                    B = std::min(maxWidth,di);
+                    break;
+                }
+                maxWidth = std::min(maxWidth,dj);
+            }
+            B1Val = mainEntryBuilder.getInt32(B);
+            B2Val = mainEntryBuilder.getInt32(B);
             // Delete first store
             for (User *U : iReg->users())
             {

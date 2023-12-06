@@ -38,7 +38,7 @@ double ***read_matrices()
         matrices[k] = malloc(SIZE * sizeof(double *));
         for (int i = 0; i < SIZE; i++)
         {
-            matrices[k][i] = malloc(SIZE * sizeof(double));
+            matrices[k][i] = malloc(SIZE * sizeof(double)) ;
         }
     }
 
