@@ -10,6 +10,8 @@ clang test-blocked-output.ll -Xclang -disable-O0-optnone -o test-blocked
 clang -O0 test-${1}.c -o test-unblocked
 cat .main.dot | dot -Tpdf > test-blocked-${1}.pdf
 echo "== Running non-tiled test ..."
+#valgrind --tool=cachegrind --D1=32768,1,64 ./test-unblocked >> unblocked.log
 ./test-unblocked
 echo "== Running tiled test ..."
+#valgrind --tool=cachegrind --D1=32768,1,64 ./test-blocked >> blocked.log
 ./test-blocked

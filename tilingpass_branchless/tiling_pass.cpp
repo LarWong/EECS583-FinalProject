@@ -19,10 +19,27 @@
 #include <iostream>
 #include <algorithm>
 #include <cmath>
+#include <vector>
 using namespace llvm;
+
+#define CLS 64  // Cache Line Size
+#define CS 32768 // Cache Size
+#define DTS 8 // Data type Size (double = 8)
 
 namespace
 {
+    struct FactorInformation 
+    {
+        int factorOne;
+        int factorTwo;
+        double CIM;
+        double cost;
+        double penalty;
+
+        FactorInformation(int _factorOne, int _factorTwo, double _CIM, double _cost, double _penalty) :
+            factorOne(_factorOne), factorTwo(_factorTwo), CIM(_CIM), cost(_cost), penalty(_penalty) { }
+    };
+
     struct TilingPass : public PassInfoMixin<TilingPass>
     {
         PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM)
@@ -60,7 +77,6 @@ namespace
 
             /* LLVM CONSTANT VALUES */
             auto zeroVal = mainEntryBuilder.getInt32(0);
-            int B = 2;
 
             // Loop header of original outer loop
             auto iLoop = LI.begin();
@@ -69,7 +85,48 @@ namespace
             auto iReg = cast<LoadInst>(*(iLoopHeader->begin())).getPointerOperand();
             auto matrixSize = (++iLoopHeader->begin())->getOperand(1);
             llvm::ConstantInt *matrixSizeInt = llvm::dyn_cast<llvm::ConstantInt>(matrixSize);
-            auto B1Val = mainEntryBuilder.getInt32(B);
+
+            // errs() << "MATRIS SIZE: " << matrixSizeInt->getSExtValue() << "\n";
+            std::vector<int> factors;
+            for (int i = 1; i < matrixSizeInt->getSExtValue(); ++i) {
+                if (matrixSizeInt->getSExtValue() % i == 0) {
+                    factors.push_back(i);
+                }
+            }
+
+            std::vector<FactorInformation> factorData;
+            for (int i = 0; i < factors.size(); ++i) {
+                for (int j = 0; j < factors.size(); ++j) {
+                    double cost = std::ceil((DTS * (factors[i] * factors[j] + factors[i])) / CLS) * CLS + CLS;
+                    if (cost < CS) {
+                        factorData.push_back(FactorInformation(
+                            factors[i], factors[j], 
+                            (2.0 * factors[i] + factors[j]) / (factors[i] * factors[j]), 
+                            cost,
+                            (std::ceil((double) factors[i] * DTS / CLS) * CLS - (factors[i] * DTS))
+                        ));
+                    }
+                }
+            }
+
+            std::sort(factorData.begin(), factorData.end(), [&](FactorInformation &lhs, FactorInformation &rhs) { 
+                if (lhs.penalty == rhs.penalty) { return lhs.CIM > rhs.CIM; }
+                else { return lhs.penalty > rhs.penalty; }
+            });
+
+            for (auto &val : factorData) {
+                errs() << "Factor: " << val.factorOne << " " << val.factorTwo << " "
+                       << llvm::format("%.5f", val.CIM) << " " << llvm::format("%.0f", val.cost) 
+                       << " " << llvm::format("%.0f", val.penalty) << "\n";
+            }
+
+            int A = factorData[factorData.size() - 1].factorOne;
+            int B = factorData[factorData.size() - 1].factorTwo;
+            A = 40;
+            B = 40;
+            errs() << "VALUES USED: " << A << " " << B << "\n";
+
+            auto B1Val = mainEntryBuilder.getInt32(A);
             auto B2Val = mainEntryBuilder.getInt32(B);
 
             // Delete first store

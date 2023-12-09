@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Array of arguments
+#arguments=("1300" "1400" "1500" "1600" "1700" "1800" "1900" "2000")
+arguments=("100" "200" "300" "400" "500" "600" "700" "800" "900" "1000")
+
+# Loop through the array and run the script with each argument
+for arg in "${arguments[@]}"; do
+    echo ""
+    echo ""
+    echo ""
+    echo ""
+    echo ""
+    echo ""
+    echo "== Running with size $arg"
+    ./test_branch "$arg" 2> ./data/$arg.txt
+    grep "D   refs" ./data/$arg.txt 
+    grep "D1  misses" ./data/$arg.txt 
+done
