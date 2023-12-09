@@ -122,12 +122,10 @@ namespace
 
             int A = factorData[factorData.size() - 1].factorOne;
             int B = factorData[factorData.size() - 1].factorTwo;
-            A = 40;
-            B = 40;
-            errs() << "VALUES USED: " << A << " " << B << "\n";
+            errs() << "VALUES USED: TJ " << A << " TK" << B << "\n";
 
-            auto B1Val = mainEntryBuilder.getInt32(A);
-            auto B2Val = mainEntryBuilder.getInt32(B);
+            auto B1Val = mainEntryBuilder.getInt32(B);
+            auto B2Val = mainEntryBuilder.getInt32(A);
 
             // Delete first store
             for (User *U : iReg->users())
