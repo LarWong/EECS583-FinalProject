@@ -5,7 +5,7 @@
 arguments=("100" "200" "300" "400" "500" "600" "700" "800" "900" "1000")
 
 # Loop through the array and run the script with each argument
-for arg in "${arguments[@]}"; do
+for arg in {25..500}; do
     echo ""
     echo ""
     echo ""
@@ -14,6 +14,6 @@ for arg in "${arguments[@]}"; do
     echo ""
     echo "== Running with size $arg"
     ./test_branch "$arg" 2> ./data/$arg.txt
-    grep "D   refs" ./data/$arg.txt 
-    grep "D1  misses" ./data/$arg.txt 
+    #grep "D   refs" ./data/$arg.txt 
+    #grep "D1  misses" ./data/$arg.txt 
 done

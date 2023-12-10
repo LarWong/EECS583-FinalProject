@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# CSV file to store the results
+csv_file="results.csv"
+
+# Header for the CSV file
+echo "File,D_refs_1,D1_misses_1,D_refs_2,D1_misses_2" > "$csv_file"
+
+# Iterate over the files
+for file in ./data/*.txt; do
+  # Extract file name (excluding extension)
+  file_name=$(basename "$file" .txt)
+
+  # Extract D refs and D1 misses using grep and awk
+  d_refs_1=$(grep -oP 'D   refs:\s+\K[0-9,]+' "$file" | awk 'NR==1' | tr -d ',')
+  d1_misses_1=$(grep -oP 'D1  misses:\s+\K[0-9,]+' "$file" | awk 'NR==1' | tr -d ',')
+
+  d_refs_2=$(grep -oP 'D   refs:\s+\K[0-9,]+' "$file" | awk 'NR==2' | tr -d ',')
+  d1_misses_2=$(grep -oP 'D1  misses:\s+\K[0-9,]+' "$file" | awk 'NR==2' | tr -d ',')
+
+  # Append data to the CSV file
+  echo "$file_name, $d_refs_1, $d1_misses_1, $d_refs_2, $d1_misses_2" >> "$csv_file"
+done
+
+echo "Data has been collected and saved to $csv_file"
