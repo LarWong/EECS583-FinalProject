@@ -9,3 +9,4 @@ include_directories(${LLVM_INCLUDE_DIRS})
 
 add_subdirectory(tilingpass)
 add_subdirectory(tilingpass_branchless)
+add_subdirectory(tilingpass_theo)
