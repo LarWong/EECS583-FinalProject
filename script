@@ -13,7 +13,7 @@ for arg in {25..500}; do
     echo ""
     echo ""
     echo "== Running with size $arg"
-    ./test_branch "$arg" 2> ./data/$arg.txt
+    ./test_factor "$arg" 2> ./data/$arg.txt
     #grep "D   refs" ./data/$arg.txt 
     #grep "D1  misses" ./data/$arg.txt 
 done

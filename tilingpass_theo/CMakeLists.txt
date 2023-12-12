@@ -1,1 +1,0 @@
-add_llvm_pass_plugin(tilingpass_theo tiling_pass.cpp)

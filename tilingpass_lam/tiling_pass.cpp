@@ -21,9 +21,6 @@
 #include <cmath>
 using namespace llvm;
 
-#define CLS 64  // Cache Line Size
-#define CS 512 // Cache Size NUM OF LINE
-#define DTS 8 // Data type Size (double = 8)
 namespace
 {
     struct TilingPass : public PassInfoMixin<TilingPass>
@@ -72,50 +69,26 @@ namespace
             auto matrixSize = (++iLoopHeader->begin())->getOperand(1);
             llvm::ConstantInt* matrixSizeInt = llvm::dyn_cast<llvm::ConstantInt>(matrixSize);
 
-            int N = matrixSizeInt->getSExtValue();
-            int miss_x = 0;
-            int miss_z = 0;
-            int miss_y = 0;
-            int miss = 10000000000;
-            int A = 0;
+            //tailor algo
             int B = 0;
-            float u = 1.3;
-            for(int a = 1; a < N; a++){
-                for(int b = DTS; b < N; b <<=1){
-                    int cost_iloop = (std::ceil(float(a)/8)*2 + (b/8)*2 + (b/8) * a) * u;
-                    if(cost_iloop < CS){
-                        miss_x = N * std::ceil(float(N)/a) * std::ceil(float(a)/8) * ceil(float(N)/b);
-                        miss_z = N * std::ceil(float(N)/b) * std::ceil(float(b)/8) * ceil(float(N)/a);
-                        // miss_y = std::ceil(float(N)/a);
-                        if(miss > (miss_x + miss_z + miss_y)){
-                            miss = miss_x + miss_z;
-                            A = a;
-                            B = b;
-                        }
-                    }
+            int C = 32 * 1024 / sizeof(double) ;
+            int maxWidth = std::min(matrixSizeInt->getSExtValue(),static_cast<int64_t>(C));
+            int addr = matrixSizeInt->getSExtValue() / 2;
+            int di = 0;
+            int dj = 0;
+            while(true){
+                addr = addr + C;
+                di = addr / matrixSizeInt->getSExtValue();
+                dj = std::abs(addr % matrixSizeInt->getSExtValue() - (matrixSizeInt->getSExtValue() / 2));
+                if(di >= std::min(maxWidth,dj)){
+                    B = std::min(maxWidth,di);
+                    break;
                 }
+                maxWidth = std::min(maxWidth,dj);
             }
-            // //tailor algo
-            // int B = 0;
-            // int C = 32 * 1024 / sizeof(double) ;
-            // int maxWidth = std::min(matrixSizeInt->getSExtValue(),static_cast<int64_t>(C));
-            // int addr = matrixSizeInt->getSExtValue() / 2;
-            // int di = 0;
-            // int dj = 0;
-            // while(true){
-            //     addr = addr + C;
-            //     di = addr / matrixSizeInt->getSExtValue();
-            //     dj = std::abs(addr % matrixSizeInt->getSExtValue() - (matrixSizeInt->getSExtValue() / 2));
-            //     if(di >= std::min(maxWidth,dj)){
-            //         B = std::min(maxWidth,di);
-            //         break;
-            //     }
-            //     maxWidth = std::min(maxWidth,dj);
-            // }
-            std::cout << "A: " << A << std::endl;
-            std::cout << "B: " << B << std::endl;
 
-            auto B1Val = mainEntryBuilder.getInt32(A);
+            errs() << "\nLAM PASS - TILE USED: " << B << " x " << B << "\n";
+            auto B1Val = mainEntryBuilder.getInt32(B);
             auto B2Val = mainEntryBuilder.getInt32(B);
             // Delete first store
             for (User *U : iReg->users())
@@ -253,14 +226,14 @@ namespace
 extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK llvmGetPassPluginInfo()
 {
     return {
-        LLVM_PLUGIN_API_VERSION, "tilingpass_theo", "v0.1",
+        LLVM_PLUGIN_API_VERSION, "tilingpass_lam", "v0.1",
         [](PassBuilder &PB)
         {
             PB.registerPipelineParsingCallback(
                 [](StringRef Name, FunctionPassManager &FPM,
                    ArrayRef<PassBuilder::PipelineElement>)
                 {
-                    if (Name == "tilingpass_theo")
+                    if (Name == "tilingpass_lam")
                     {
                         FPM.addPass(TilingPass());
                         return true;

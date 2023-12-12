@@ -19,27 +19,13 @@
 #include <iostream>
 #include <algorithm>
 #include <cmath>
-#include <vector>
 using namespace llvm;
 
 #define CLS 64  // Cache Line Size
-#define CS 32768 // Cache Size
+#define CS 512 // NUM OF CACHE SIZE LINES
 #define DTS 8 // Data type Size (double = 8)
-
 namespace
 {
-    struct FactorInformation 
-    {
-        int factorOne;
-        int factorTwo;
-        double CIM;
-        double cost;
-        double penalty;
-
-        FactorInformation(int _factorOne, int _factorTwo, double _CIM, double _cost, double _penalty) :
-            factorOne(_factorOne), factorTwo(_factorTwo), CIM(_CIM), cost(_cost), penalty(_penalty) { }
-    };
-
     struct TilingPass : public PassInfoMixin<TilingPass>
     {
         PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM)
@@ -84,49 +70,35 @@ namespace
             // assume never nullptr
             auto iReg = cast<LoadInst>(*(iLoopHeader->begin())).getPointerOperand();
             auto matrixSize = (++iLoopHeader->begin())->getOperand(1);
-            llvm::ConstantInt *matrixSizeInt = llvm::dyn_cast<llvm::ConstantInt>(matrixSize);
+            llvm::ConstantInt* matrixSizeInt = llvm::dyn_cast<llvm::ConstantInt>(matrixSize);
 
-            // errs() << "MATRIS SIZE: " << matrixSizeInt->getSExtValue() << "\n";
-            std::vector<int> factors;
-            for (int i = 1; i < matrixSizeInt->getSExtValue(); ++i) {
-                if (matrixSizeInt->getSExtValue() % i == 0) {
-                    factors.push_back(i);
-                }
-            }
-
-            std::vector<FactorInformation> factorData;
-            for (int i = 0; i < factors.size(); ++i) {
-                for (int j = 0; j < factors.size(); ++j) {
-                    double cost = std::ceil((DTS * (factors[i] * factors[j] + factors[i])) / CLS) * CLS + CLS;
-                    if (cost < CS) {
-                        factorData.push_back(FactorInformation(
-                            factors[i], factors[j], 
-                            (2.0 * factors[i] + factors[j]) / (factors[i] * factors[j]), 
-                            cost,
-                            (std::ceil((double) factors[i] * DTS / CLS) * CLS - (factors[i] * DTS))
-                        ));
+            int N = matrixSizeInt->getSExtValue();
+            int miss_x = 0;
+            int miss_z = 0;
+            int miss_y = 0;
+            long miss = 10000000000;
+            int A = 0;
+            int B = 0;
+            float u = 1.3;
+            for(int a = 1; a < N; a++){
+                for(int b = DTS; b < N; b <<=1){
+                    int cost_iloop = (std::ceil(float(a)/8)*2 + (b/8)*2 + (b/8) * a) * u;
+                    if(cost_iloop < CS){
+                        miss_x = N * std::ceil(float(N)/a) * std::ceil(float(a)/8) * ceil(float(N)/b);
+                        miss_z = N * std::ceil(float(N)/b) * std::ceil(float(b)/8) * ceil(float(N)/a);
+                        // miss_y = std::ceil(float(N)/a);
+                        if(miss > (miss_x + miss_z + miss_y)){
+                            miss = miss_x + miss_z;
+                            A = a;
+                            B = b;
+                        }
                     }
                 }
             }
 
-            std::sort(factorData.begin(), factorData.end(), [&](FactorInformation &lhs, FactorInformation &rhs) { 
-                if (lhs.penalty == rhs.penalty) { return lhs.CIM > rhs.CIM; }
-                else { return lhs.penalty > rhs.penalty; }
-            });
-
-            for (auto &val : factorData) {
-                errs() << "Factor: " << val.factorOne << " " << val.factorTwo << " "
-                       << llvm::format("%.5f", val.CIM) << " " << llvm::format("%.0f", val.cost) 
-                       << " " << llvm::format("%.0f", val.penalty) << "\n";
-            }
-
-            int A = factorData[factorData.size() - 1].factorOne;
-            int B = factorData[factorData.size() - 1].factorTwo;
-            errs() << "VALUES USED: TJ " << A << " TK" << B << "\n";
-
-            auto B1Val = mainEntryBuilder.getInt32(B);
-            auto B2Val = mainEntryBuilder.getInt32(A);
-
+            errs() << "\nSQRT PASS - TILE USED: " << A << " x " << B << "\n";
+            auto B1Val = mainEntryBuilder.getInt32(A);
+            auto B2Val = mainEntryBuilder.getInt32(B);
             // Delete first store
             for (User *U : iReg->users())
             {
@@ -158,19 +130,25 @@ namespace
             /* ALL NEW BBs TO ADD*/
             auto kkLoopHeader = BasicBlock::Create(F.getContext(), "kk_loop_header", &F, iLoopHeader);
             auto kkLoopLatch = BasicBlock::Create(F.getContext(), "kk_loop_latch", &F);
-            auto kkLoopBB = BasicBlock::Create(F.getContext(), "kk_loop_bb", &F);
+            auto kkLoopBB1 = BasicBlock::Create(F.getContext(), "kk_loop_bb_1", &F);
+            auto kkLoopTBB = BasicBlock::Create(F.getContext(), "kk_loop_t", &F);
+            auto kkLoopFBB = BasicBlock::Create(F.getContext(), "kk_loop_f", &F);
+            auto kkLoopBB2 = BasicBlock::Create(F.getContext(), "kk_loop_bb_2", &F);
 
             auto jjLoopHeader = BasicBlock::Create(F.getContext(), "jj_loop_header", &F);
             auto jjLoopLatch = BasicBlock::Create(F.getContext(), "jj_loop_latch", &F);
-            auto jjLoopBB = BasicBlock::Create(F.getContext(), "jj_loop_bb", &F);
+            auto jjLoopBB1 = BasicBlock::Create(F.getContext(), "jj_loop_bb_1", &F);
+            auto jjLoopTBB = BasicBlock::Create(F.getContext(), "jj_loop_t", &F);
+            auto jjLoopFBB = BasicBlock::Create(F.getContext(), "jj_loop_f", &F);
+            auto jjLoopBB2 = BasicBlock::Create(F.getContext(), "jj_loop_bb_2", &F);
 
             /* ======= jj LOOP START =======*/
             // Fill jjLoopHeader
             IRBuilder<> jjLoopHeaderBuilder(jjLoopHeader);
             auto currJJ = jjLoopHeaderBuilder.CreatePHI(Type::getInt32Ty(F.getContext()), 2, "curr_jj");
-            currJJ->addIncoming(zeroVal, kkLoopBB);
+            currJJ->addIncoming(zeroVal, kkLoopBB2);
             auto jjCmp = jjLoopHeaderBuilder.CreateICmpSLT(currJJ, matrixSize, "jj_cmp");
-            jjLoopHeaderBuilder.CreateCondBr(jjCmp, jjLoopBB, kkLoopLatch);
+            jjLoopHeaderBuilder.CreateCondBr(jjCmp, jjLoopBB1, kkLoopLatch);
 
             // Fill jjLoopLatch
             IRBuilder<> jjLoopLatchBuilder(jjLoopLatch);
@@ -180,10 +158,25 @@ namespace
             iLoopHeader->getTerminator()->setSuccessor(1, jjLoopLatch);
 
             // Fill jjLoopBB1
-            IRBuilder<> jjLoopBBBuilder(jjLoopBB);
-            auto newJBound = jjLoopBBBuilder.CreateNSWAdd(currJJ, B2Val, "jj_bound");
-            jjLoopBBBuilder.CreateStore(zeroVal, iReg);
-            jjLoopBBBuilder.CreateBr(iLoopHeader);
+            IRBuilder<> jjLoopBB1Builder(jjLoopBB1);
+            auto newJJBB1 = jjLoopBB1Builder.CreateNSWAdd(currJJ, B2Val, "new_jj_BB1");
+            auto jjTest = jjLoopBB1Builder.CreateICmpSGT(newJJBB1, matrixSize, "test_new_jj");
+            jjLoopBB1Builder.CreateCondBr(jjTest, jjLoopTBB, jjLoopFBB);
+
+            // Fill jjLoopT: used for Phi node
+            IRBuilder<> jjLoopTBBBuilder(jjLoopTBB);
+            jjLoopTBBBuilder.CreateBr(jjLoopBB2);
+            // Fill jjLoopF: used for Phi node
+            IRBuilder<> jjLoopFBBBuilder(jjLoopFBB);
+            jjLoopFBBBuilder.CreateBr(jjLoopBB2);
+
+            // Fill jjLoopBB2
+            IRBuilder<> jjLoopBB2Builder(jjLoopBB2);
+            auto newJBound = jjLoopBB2Builder.CreatePHI(Type::getInt32Ty(F.getContext()), 2, "j_bound_phi");
+            newJBound->addIncoming(newJJBB1, jjLoopFBB);
+            newJBound->addIncoming(matrixSize, jjLoopTBB);
+            jjLoopBB2Builder.CreateStore(zeroVal, iReg);
+            jjLoopBB2Builder.CreateBr(iLoopHeader);
 
             /* ======= jj LOOP END =======*/
 
@@ -197,7 +190,7 @@ namespace
             auto currKK = kkLoopHeaderBuilder.CreatePHI(Type::getInt32Ty(F.getContext()), 2, "curr_kk");
             currKK->addIncoming(zeroVal, mainEntryBB);
             auto kkCmp = kkLoopHeaderBuilder.CreateICmpSLT(currKK, matrixSize, "kk_cmp");
-            kkLoopHeaderBuilder.CreateCondBr(kkCmp, kkLoopBB, outerLoopExit);
+            kkLoopHeaderBuilder.CreateCondBr(kkCmp, kkLoopBB1, outerLoopExit);
 
             // Fill kkLoopLatch
             IRBuilder<> kkLoopLatchBuilder(kkLoopLatch);
@@ -205,10 +198,25 @@ namespace
             currKK->addIncoming(newKKLatch, kkLoopLatch);
             kkLoopLatchBuilder.CreateBr(kkLoopHeader);
 
-            // Fill kkLoopBB
-            IRBuilder<> kkLoopBBBuilder(kkLoopBB);
-            auto newKBound = kkLoopBBBuilder.CreateNSWAdd(currKK, B1Val, "kk_bound");
-            kkLoopBBBuilder.CreateBr(jjLoopHeader);
+            // Fill kkLoopBB1
+            IRBuilder<> kkLoopBB1Builder(kkLoopBB1);
+            auto newKKBB1 = kkLoopBB1Builder.CreateNSWAdd(currKK, B1Val, "new_kk_BB1");
+            auto kkTest = kkLoopBB1Builder.CreateICmpSGT(newKKBB1, matrixSize, "test_new_kk");
+            kkLoopBB1Builder.CreateCondBr(kkTest, kkLoopTBB, kkLoopFBB);
+
+            // Fill kkLoopT: used for Phi node
+            IRBuilder<> kkLoopTBBBuilder(kkLoopTBB);
+            kkLoopTBBBuilder.CreateBr(kkLoopBB2);
+            // Fill kkLoopF: used for Phi node
+            IRBuilder<> kkLoopFBBBuilder(kkLoopFBB);
+            kkLoopFBBBuilder.CreateBr(kkLoopBB2);
+
+            // Fill kkLoopBB2
+            IRBuilder<> kkLoopBB2Builder(kkLoopBB2);
+            auto newKBound = kkLoopBB2Builder.CreatePHI(Type::getInt32Ty(F.getContext()), 2, "k_bound_phi");
+            newKBound->addIncoming(newKKBB1, kkLoopFBB);
+            newKBound->addIncoming(matrixSize, kkLoopTBB);
+            kkLoopBB2Builder.CreateBr(jjLoopHeader);
 
             /* ======= kk LOOP END ======= */
 
@@ -227,14 +235,14 @@ namespace
 extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK llvmGetPassPluginInfo()
 {
     return {
-        LLVM_PLUGIN_API_VERSION, "tilingpass_branchless", "v0.1",
+        LLVM_PLUGIN_API_VERSION, "tilingpass_lru", "v0.1",
         [](PassBuilder &PB)
         {
             PB.registerPipelineParsingCallback(
                 [](StringRef Name, FunctionPassManager &FPM,
                    ArrayRef<PassBuilder::PipelineElement>)
                 {
-                    if (Name == "tilingpass_branchless")
+                    if (Name == "tilingpass_lru")
                     {
                         FPM.addPass(TilingPass());
                         return true;

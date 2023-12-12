@@ -1,0 +1,16 @@
+#!/bin/bash
+mkdir build
+cd build && cmake .. && make
+cd ../tests
+python3 make_tests.py ${1}
+rm *.ll test-lam
+clang -emit-llvm -S test-${1}.c -Xclang -disable-O0-optnone -o test-lam.ll
+opt -load-pass-plugin=../build/tilingpass_lam/tilingpass_lam.so -passes="tilingpass_lam" test-lam.ll -o test-lam-output.ll
+# opt -load-pass-plugin=../build/tilingpass_lam/tilingpass_lam.so -passes="tilingpas_lam,dot-cfg" test-lam.ll -o test-lam-output.ll
+clang test-lam-output.ll -Xclang -disable-O0-optnone -o test-lam
+clang -O0 test-${1}.c -o test-unblocked
+# cat .main.dot | dot -Tpdf > test-lam-${1}.pdf
+echo "== Running non-tiled test ..."
+valgrind --tool=cachegrind --D1=32768,1,64 ./test-unblocked
+echo "== Running tiled test ..."
+valgrind --tool=cachegrind --D1=32768,1,64 ./test-lam
