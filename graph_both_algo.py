@@ -12,9 +12,14 @@ def is_prime(n):
             return False
     return True
 
+def cherry_pick(n):
+    if n % 5 == 0:
+        return False
+    return True
+
 # Read CSV file into a list of dictionaries
 data = []
-with open('data64.csv', 'r') as csvfile:
+with open('dataCombined.csv', 'r') as csvfile:
     reader = csv.DictReader(csvfile)
     for row in reader:
         data.append(row)
@@ -34,24 +39,23 @@ df = pd.DataFrame(data)
 df = df.sort_values(by='File')
 
 # Filter the DataFrame to exclude rows where 'File' is a prime number
-#df = df[~df['File'].apply(is_prime)]
+df = df[~df['File'].apply(is_prime)]
 
 # Calculate new columns: 'D1_misses_1 / 2' and 'D1_misses_2 / 4'
 df['D1_misses_1_normalized'] = df['D1_misses_1'] / df['D_refs_1']
 df['D1_misses_2_normalized'] = df['D1_misses_2'] / df['D_refs_2']
 
-# Plot the normalized data with title and better colors
-plt.plot(df['File'].to_numpy(), df['D1_misses_1_normalized'].to_numpy(), label='Untiled MR', color='#87CEFA')
-plt.plot(df['File'].to_numpy(), df['D1_misses_2_normalized'].to_numpy(), label='Algo 3 MR', color='orange')
+# Plot the normalized data
+plt.plot(df['File'].to_numpy(), df['D1_misses_1_normalized'].to_numpy(), label='D1 miss rate')
+plt.plot(df['File'].to_numpy(), df['D1_misses_2_normalized'].to_numpy(), label='D1 miss rate')
 
-# Add labels, title, and a legend
-plt.xlabel('Matrix Size')
-plt.ylabel('L1 Data Cache MR')
-plt.title('Untiled vs Algo 3 Miss Rate w/o Primes')
+# Add labels and a legend
+plt.xlabel('File')
+plt.ylabel('D1 Miss Rate')
 plt.legend()
 
 # Save the plot to a PNG file
-plt.savefig('graphs/data64_mr_prime.png')
+plt.savefig('graphs/dataOriginal_mr_prime.png')
 
 # Optionally, you can also display the plot if needed
-plt.show()
+# plt.show()

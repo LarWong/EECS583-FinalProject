@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Output CSV file
+output_csv="data64.csv"
+
+# Header for CSV
+echo "File,D_refs_1,D1_misses_1,D_refs_2,D1_misses_2" > "$output_csv"
+
+# Iterate over files in dataSquare directory
+for file_square in dataSquare64/*.txt; do
+    # Extract file name without extension
+    file_name=$(basename "${file_square%.txt}")
+
+    # Get corresponding file in dataOriginal directory
+    file_original="data64/${file_name}.txt"
+
+    # Check if the corresponding file exists
+    if [ -f "$file_original" ]; then
+        # Extract D_refs and D1_misses from dataSquare file
+        d_refs_1_square=$(grep -oP 'D   refs:\s+\K[0-9,]+' "$file_square" | awk 'NR==1' | tr -d ',')
+        d1_misses_1_square=$(grep -oP 'D1  misses:\s+\K[0-9,]+' "$file_square" | awk 'NR==1' | tr -d ',')
+
+        d_refs_2_square=$(grep -oP 'D   refs:\s+\K[0-9,]+' "$file_square" | awk 'NR==2' | tr -d ',')
+        d1_misses_2_square=$(grep -oP 'D1  misses:\s+\K[0-9,]+' "$file_square" | awk 'NR==2' | tr -d ',')
+
+        # Extract D_refs and D1_misses from dataOriginal file
+        d_refs_1_original=$(grep -oP 'D   refs:\s+\K[0-9,]+' "$file_original" | awk 'NR==1' | tr -d ',')
+        d1_misses_1_original=$(grep -oP 'D1  misses:\s+\K[0-9,]+' "$file_original" | awk 'NR==1' | tr -d ',')
+
+        d_refs_2_original=$(grep -oP 'D   refs:\s+\K[0-9,]+' "$file_original" | awk 'NR==2' | tr -d ',')
+        d1_misses_2_original=$(grep -oP 'D1  misses:\s+\K[0-9,]+' "$file_original" | awk 'NR==2' | tr -d ',')
+
+        # Append data to CSV
+        echo "$file_name,$d_refs_1_square,$d1_misses_1_square,$d_refs_2_original,$d1_misses_2_original" >> "$output_csv"
+    fi
+done

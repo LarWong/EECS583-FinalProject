@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # CSV file to store the results
-csv_file="results.csv"
+csv_file="data64.csv"
 
 # Header for the CSV file
 echo "File,D_refs_1,D1_misses_1,D_refs_2,D1_misses_2" > "$csv_file"
 
 # Iterate over the files
-for file in ./data/*.txt; do
+for file in ./data64/*.txt; do
   # Extract file name (excluding extension)
   file_name=$(basename "$file" .txt)
 

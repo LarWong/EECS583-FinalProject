@@ -24,8 +24,6 @@ for row in data:
     row['File'] = pd.to_numeric(row['File'], errors='coerce')
     row['D1_misses_1'] = pd.to_numeric(row['D1_misses_1'], errors='coerce')
     row['D1_misses_2'] = pd.to_numeric(row['D1_misses_2'], errors='coerce')
-    row['D_refs_1'] = pd.to_numeric(row['D_refs_1'], errors='coerce')
-    row['D_refs_2'] = pd.to_numeric(row['D_refs_2'], errors='coerce')
 
 # Create a DataFrame from the list of dictionaries
 df = pd.DataFrame(data)
@@ -34,24 +32,30 @@ df = pd.DataFrame(data)
 df = df.sort_values(by='File')
 
 # Filter the DataFrame to exclude rows where 'File' is a prime number
-#df = df[~df['File'].apply(is_prime)]
+df = df[~df['File'].apply(is_prime)]
 
-# Calculate new columns: 'D1_misses_1 / 2' and 'D1_misses_2 / 4'
-df['D1_misses_1_normalized'] = df['D1_misses_1'] / df['D_refs_1']
-df['D1_misses_2_normalized'] = df['D1_misses_2'] / df['D_refs_2']
+# Determine even multiples based on the y-axis values
+min_value = min(df['D1_misses_1'].min(), df['D1_misses_2'].min())
+max_value = max(df['D1_misses_1'].max(), df['D1_misses_2'].max())
 
-# Plot the normalized data with title and better colors
-plt.plot(df['File'].to_numpy(), df['D1_misses_1_normalized'].to_numpy(), label='Untiled MR', color='#87CEFA')
-plt.plot(df['File'].to_numpy(), df['D1_misses_2_normalized'].to_numpy(), label='Algo 3 MR', color='orange')
+# Calculate even multiples within the range
+even_multiples = np.arange(min_value, max_value, step=2)
 
-# Add labels, title, and a legend
+# Filter the DataFrame to include only rows where 'D1_misses_1' or 'D1_misses_2' match the even multiples
+df_downsampled = df[df['D1_misses_1'].isin(even_multiples) | df['D1_misses_2'].isin(even_multiples)]
+
+# Plot the downsampled data
+plt.plot(df_downsampled['File'].to_numpy(), df_downsampled['D1_misses_1'].to_numpy(), label='Untiled Misses', color='#87CEFA')
+plt.plot(df_downsampled['File'].to_numpy(), df_downsampled['D1_misses_2'].to_numpy(), label='Algo 3 Misses', color='orange')
+
+# Add labels and a legend
 plt.xlabel('Matrix Size')
-plt.ylabel('L1 Data Cache MR')
-plt.title('Untiled vs Algo 3 Miss Rate w/o Primes')
+plt.ylabel('L1 Data Cache Misses')
+plt.title('Untiled vs Algo 3 Misses 64KB')
 plt.legend()
 
 # Save the plot to a PNG file
-plt.savefig('graphs/data64_mr_prime.png')
+plt.savefig('graphs/data64_misses.png')
 
 # Optionally, you can also display the plot if needed
-plt.show()
+# plt.show()
