@@ -1,0 +1,22 @@
+#!/bin/bash
+cd /home/stilex/EECS583-FinalProject
+mkdir build
+cd build && cmake .. && make
+cd ../tests
+python3 make_tests.py ${1}
+rm *.ll test-blocked-theo cachegrind* 
+clang -emit-llvm -S test-${1}.c -Xclang -disable-O0-optnone -o test-blocked-theo.ll
+opt -load-pass-plugin=../build/tilingpass_theo/tilingpass_theo.so -passes="tilingpass_theo,dot-cfg" test-blocked-theo.ll -o test-blocked-theo-output.ll
+clang test-blocked-theo-output.ll -Xclang -disable-O0-optnone -o test-blocked-theo
+clang -O0 test-${1}.c -o test-unblocked
+# cat .main.dot | dot -Tpdf > test-blocked-theo-${1}.pdf
+echo "== Running non-tiled test ..."
+valgrind --tool=cachegrind --D1=32768,512,64 ./test-unblocked  > valgrind_unblocked_output.txt 2>&1
+
+echo "== Running tiled test ..."
+valgrind --tool=cachegrind --D1=32768,512,64 ./test-blocked-theo > valgrind_blocked_theo_output.txt 2>&1
+D1_misses_unblocked=$(grep 'D1  misses:[[:space:]]*[0-9,]*' "valgrind_unblocked_output.txt" | awk -F '[: ]+' '{print $4}' | tr -d ',')
+D1_misses_blocked=$(grep 'D1  misses:[[:space:]]*[0-9,]*' "valgrind_blocked_theo_output.txt" | awk -F '[: ]+' '{print $4}' | tr -d ',')
+echo "$D1_misses_unblocked" >> D1_misses_unblocked1.txt
+echo "$D1_misses_blocked" >> D1_misses_blocked1.txt
+rm test-*
