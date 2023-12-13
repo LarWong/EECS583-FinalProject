@@ -17,3 +17,4 @@ To run (\<N\> is the matrix dimension for an NxN matrix):
   - Lam et al.: `./test_lam <N>`
   - Factor-based: `./test_factor <N>`
   - LRU-based: `./test_lru <N>`
+  - All algos: `./run.sh <N>`
