@@ -3,7 +3,7 @@ EECS 583 Final Project
 Group 5: Larry Wong, Yuchen Xia, Wynn Kaza
 
 # How this project works?
-We generate a C file that implements regular matrix multiplication of a certain size. This C program reads in 3 matrices (X, Y, and Z such that XY = Z). We run a pass on this program to generate the tiled matrix multiplication version of it, utilizing differernt algorithms to select tile sizes. Finally, we run the untiled version and the tiled version using cachegrind to simulate specific cache characteristics (32/64 KB sizes, fully associative, 64 B cache lines) to get the number of L1 Data cache misses. 
+We generate a C file that implements regular matrix multiplication of a certain size (in the tests/ dir). This C program reads in 3 matrices (X, Y, and Z such that XY = Z). We run a pass on this program to generate the tiled matrix multiplication version of it, utilizing differernt algorithms to select tile sizes. Finally, we run the untiled version and the tiled version using cachegrind to simulate specific cache characteristics (32/64 KB sizes, fully associative, 64 B cache lines) to get the number of L1 Data cache misses. 
 
 We tested this code on class server b, where valgrind and the necessary tools are installed.
 
