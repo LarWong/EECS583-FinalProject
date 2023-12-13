@@ -10,7 +10,7 @@ In this repo, we have 4 passes to convert regular matrix multiplication into til
   - Factor-based tile selection (choose tile sizes based on the factors of the matrix dimenstions)
   - LRU-based tile selection
 
-To run (<N> is the matrix dimension for an NxN matrix):
+To run (\<N\> is the matrix dimension for an NxN matrix):
   - Square root: `./test_sqrt <N>`
   - Lam et al.: `./test_lam <N>`
   - Factor-based: `./test_factor <N>`
